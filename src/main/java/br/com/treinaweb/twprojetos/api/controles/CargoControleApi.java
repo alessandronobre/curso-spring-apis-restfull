@@ -1,14 +1,13 @@
 package br.com.treinaweb.twprojetos.api.controles;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
-
-import java.util.List;
-
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Link;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.treinaweb.twprojetos.api.dto.CargoDTO;
+import br.com.treinaweb.twprojetos.api.hateoas.CargoAssembler;
 import br.com.treinaweb.twprojetos.entidades.Cargo;
 import br.com.treinaweb.twprojetos.servicos.CargoServico;
 
@@ -32,39 +32,42 @@ public class CargoControleApi {
     @Autowired
     private CargoServico cargoServico;
     
+    @Autowired
+    private CargoAssembler cargoAssembler;
+    
+    @Autowired
+    private PagedResourcesAssembler<Cargo> pagedResourcesAssembler;
+    
     @GetMapping
-    public List<Cargo> buscarTodos() {
-    	List<Cargo> cargos = cargoServico.buscarTodos();
-		
-    	cargos.forEach(cargo -> {
-    		Long id = cargo.getId();
-    		
-    		Link selfLink = linkTo(methodOn(CargoControleApi.class).buscarPorId(id)).withSelfRel().withType("GET");
-    		Link editarLink = linkTo(methodOn(CargoControleApi.class).atualizar(null, id)).withSelfRel().withType("PUT");
-    		Link exclusaoLink = linkTo(methodOn(CargoControleApi.class).excluirPorId(id)).withSelfRel().withType("DELETE");
-    		
-    		cargo.add(selfLink, editarLink, exclusaoLink);
-    	});
-    	
-    	
-    	return cargos;
+    public CollectionModel<EntityModel<Cargo>> buscarTodos(Pageable paginacao) {
+    	Page<Cargo> cargos = cargoServico.buscarTodos(paginacao);
+
+    	return pagedResourcesAssembler.toModel(cargos);
 
     }
 
     @GetMapping("/{id}")
-	public Cargo buscarPorId(@PathVariable Long id) {
-		return cargoServico.buscarPorId(id);
+	public EntityModel<Cargo> buscarPorId(@PathVariable Long id) {
+    	Cargo cargo = cargoServico.buscarPorId(id);
+		
+		return cargoAssembler.toModel(cargo);
 	}
     
     @PostMapping
     @ResponseStatus(code = HttpStatus.CREATED)
-	public Cargo cadastrar(@RequestBody @Valid CargoDTO cargoDTO) {
-		return cargoServico.cadastrar(cargoDTO);
+	public EntityModel<Cargo> cadastrar(@RequestBody @Valid CargoDTO cargoDTO) {
+    	Cargo cargo = cargoServico.cadastrar(cargoDTO);
+    	
+		return cargoAssembler.toModel(cargo);
+    	
+    	
 	}
     
     @PutMapping("/{id}")
-	public Cargo atualizar(@RequestBody @Valid CargoDTO cargoDTO, @PathVariable Long id) {
-		return cargoServico.atualizar(cargoDTO, id);
+	public EntityModel<Cargo> atualizar(@RequestBody @Valid CargoDTO cargoDTO, @PathVariable Long id) {
+    	Cargo cargo = cargoServico.atualizar(cargoDTO, id);
+    	
+    	return cargoAssembler.toModel(cargo);
 	}
 
     @DeleteMapping("/{id}")
@@ -73,7 +76,5 @@ public class CargoControleApi {
 		
 		return ResponseEntity.noContent().build();
 	}
-    
-    
     
 }
